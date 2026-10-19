@@ -543,26 +543,40 @@ class _GlassPinnedBarChromeState extends State<GlassPinnedBarChrome> {
             return _measuringGroup(group, ambientDirection);
           }
 
-          VoidCallback tapOf(GlassBarActionItem item) =>
+          VoidCallback? tapOf(GlassBarActionItem item) =>
               item is GlassBarSheetItem
                   ? () => item.onPresent(anchor)
-                  : item.onTap;
+                  : (item.hasTap ? item.onTap : null);
 
           if (!group.glass) {
             final item = group.items.single;
+            Widget content = SizedBox(
+              height: group.crossExtent,
+              child: Directionality(
+                textDirection: ambientDirection,
+                child: item.content,
+              ),
+            );
+            if (!item.enabled) {
+              content = Opacity(opacity: 0.5, child: content);
+            }
+            if (!item.hasTap) {
+              if (item.label != null && item.label!.isNotEmpty) {
+                return Semantics(
+                  container: true,
+                  label: item.label,
+                  child: ExcludeSemantics(child: content),
+                );
+              }
+              return Semantics(explicitChildNodes: true, child: content);
+            }
             return Semantics(
               button: true,
               label: item.label,
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: item.enabled ? tapOf(item) : null,
-                child: SizedBox(
-                  height: group.crossExtent,
-                  child: Directionality(
-                    textDirection: ambientDirection,
-                    child: item.content,
-                  ),
-                ),
+                child: content,
               ),
             );
           }
