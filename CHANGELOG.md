@@ -1,14 +1,34 @@
 # Unreleased
 
-## Bug Fixes
-- **Menu rows showed no hover under a mouse:** A `GlassMenuItem` lit up under the pointer with a white wash at 10 percent. On dark glass that reads; on light glass it is white on white, so a mouse moving down a menu on the web or the desktop got no feedback at all. The selection pill, which already follows a press-and-slide in `selectionColor`, now follows a resting mouse as well and leaves when the pointer leaves the menu.
-- **A pinned bar asserted when the screen resized under another route:** A pinned bar's in-route strip is an `OverlayPortal.overlayChildLayoutBuilder` child, which Flutter lays out every frame even while its route is offstage, against the overlay's size from before the resize (flutter/flutter#192030). Rotating or unfolding iPhone Duo under a full-screen route asserted `size == theater.size`. `GlassPinnedBarChrome` now takes the strip out of the overlay while its route is offstage.
-- **A modal sheet shown with `isDismissible: false` closed on an outside tap:** `GlassModalSheetScaffold` catches taps outside the sheet itself, above the route's barrier, and always dismissed on them. It now takes `barrierDismissible`, and `GlassModalSheet.show` passes `isDismissible` to it.
-
 ## Features
 
-- **Modal sheet animation style:** `GlassModalSheet.show` accepts optional `sheetAnimationStyle`, as `showModalBottomSheet` does, to set the slide's duration and curve in each direction. The morph keeps its own spring.
-- **Bars share the status bar's row on iPhone Duo's inner display held upright (fixes #368):** There the status cluster is a corner rather than a strip across the top, and natively the navigation bar moves up beside it while the content still starts under the status bar. Flutter reports only the 82pt top inset, so `GlassAppBar.pinned` laid its row out a whole row lower. A pinned bar and its chrome in `GlassNavigationShell` now sit in the status bar's row, from 20pt in to just short of the cluster with the title leading, and `GlassScaffold` starts the content under the status bar.
+- **Configurable button size for `GlassAppBar.pinned` (fixes #425):** `GlassAppBar.pinned` and `GlassPinnedBarChrome` now accept an optional `buttonSize` (`double?`, default `44.0`), sizing standalone bar buttons (the automatic back button and `separate` / `own` / `none` items) to `buttonSize`, scaling shared multi-item capsules proportionally (`buttonSize + 2.0`), and forwarding `toolbarHeight` to the pinned host so buttons are vertically centered and custom items (e.g. a 48×48 `GlassButton` with `GlassBarItemBackground.own`) are never squeezed to 44pt. `buttonSize` is ignored in iPhone Duo's vertical strip, which keeps its native metrics; in the upright status-row layout the chrome keeps its 44pt row and is not re-centred for a larger `buttonSize`.
+
+  **Behaviour note:** a `GlassAppBar.pinned` bar's in-route buttons are no longer capped at the toolbar height, so a shared multi-item capsule drawn in-route now measures 46pt like the pinned copy, where it was previously clamped to 44pt (a 2pt jump at hand-over). Custom items inside a capsule are likewise held to the capsule's height in-route, as they already were when pinned.
+
+  Thanks to [@AlexT15-al](https://github.com/AlexT15-al) for the feature request (#425).
+
+- **Modal sheet animation style (PR #427):** `GlassModalSheet.show` accepts an optional `sheetAnimationStyle` to customize the slide's duration and curve in each direction while keeping the morph spring.
+
+  Thanks to [@JakeThomson](https://github.com/JakeThomson) for the contribution (#427).
+
+- **Status-row navigation bars on iPhone Duo upright inner display (PR #426, fixes #368):** Pinned `GlassAppBar` and `GlassNavigationShell` chrome now sit beside the corner status cluster in the status bar's row when iPhone Duo is held upright, with `GlassScaffold` starting content below the status bar.
+
+  Thanks to [@JakeThomson](https://github.com/JakeThomson) for the contribution (#426, fixes #368).
+
+## Bug Fixes
+
+- **`GlassMenu` mouse hover pill (PR #430):** The `selectionColor` highlight pill now follows a resting mouse pointer across menu rows and clears when the pointer exits, giving visible hover feedback on light glass where the white item wash was invisible.
+
+  Thanks to [@Ahmadre](https://github.com/Ahmadre) for the fix (#430).
+
+- **Offstage pinned bar resize assertion (PR #429):** `GlassPinnedBarChrome` now removes its in-route `OverlayPortal` strip while its route is offstage, preventing `size == theater.size` assertions when rotating or unfolding iPhone Duo under a full-screen route.
+
+  Thanks to [@JakeThomson](https://github.com/JakeThomson) for the fix (#429).
+
+- **Locked modal sheet outside-tap dismissal (PR #428):** `GlassModalSheetScaffold` now accepts `barrierDismissible` (wired from `GlassModalSheet.show(isDismissible:)`), keeping non-dismissible sheets open when tapping outside.
+
+  Thanks to [@JakeThomson](https://github.com/JakeThomson) for the fix (#428).
 
 # 1.13.0
 
