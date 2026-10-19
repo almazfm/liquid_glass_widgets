@@ -1,7 +1,7 @@
 # Unreleased
 
-
 ## Bug Fixes
+- **Menu rows showed no hover under a mouse:** A `GlassMenuItem` lit up under the pointer with a white wash at 10 percent. On dark glass that reads; on light glass it is white on white, so a mouse moving down a menu on the web or the desktop got no feedback at all. The selection pill, which already follows a press-and-slide in `selectionColor`, now follows a resting mouse as well and leaves when the pointer leaves the menu.
 - **A pinned bar asserted when the screen resized under another route:** A pinned bar's in-route strip is an `OverlayPortal.overlayChildLayoutBuilder` child, which Flutter lays out every frame even while its route is offstage, against the overlay's size from before the resize (flutter/flutter#192030). Rotating or unfolding iPhone Duo under a full-screen route asserted `size == theater.size`. `GlassPinnedBarChrome` now takes the strip out of the overlay while its route is offstage.
 - **A modal sheet shown with `isDismissible: false` closed on an outside tap:** `GlassModalSheetScaffold` catches taps outside the sheet itself, above the route's barrier, and always dismissed on them. It now takes `barrierDismissible`, and `GlassModalSheet.show` passes `isDismissible` to it.
 
