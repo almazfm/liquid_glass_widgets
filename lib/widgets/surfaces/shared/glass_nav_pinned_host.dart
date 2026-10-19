@@ -403,6 +403,19 @@ class GlassNavPinnedHost extends StatelessWidget {
       return _buildVertical(context, verticalBar, coverageScale, settings);
     }
 
+    double? heightOf(GlassNavBarRegistration r) {
+      if (r.toolbarHeight == null && r.buttonSize == null) return null;
+      return math.max(
+        r.toolbarHeight ?? GlassNavPinnedMetrics.toolbarHeight,
+        r.buttonSize ?? 0.0,
+      );
+    }
+
+    final barHeight = heightOf(state.flowTo) ??
+        heightOf(state.flowFrom) ??
+        GlassNavPinnedMetrics.toolbarHeight;
+    final statusRow = StatusBarRow.of(context);
+
     Widget chrome = Stack(
       clipBehavior: Clip.none,
       children: [
@@ -416,6 +429,7 @@ class GlassNavPinnedHost extends StatelessWidget {
               state: state,
               groupsFor: (context, registration) => groupGlassNavBarItems(
                 _itemsFor(context, state, registration, side),
+                buttonSize: registration.buttonSize,
               ),
               anchoredAtStart: (side == _BarSide.leading) ==
                   (textDirection == TextDirection.ltr),
@@ -423,6 +437,7 @@ class GlassNavPinnedHost extends StatelessWidget {
                   ? AlignmentDirectional.centerStart
                   : AlignmentDirectional.centerEnd,
               coverageScale: coverageScale,
+              minCross: statusRow == null ? barHeight : 0.0,
             ),
           ),
       ],
@@ -441,7 +456,6 @@ class GlassNavPinnedHost extends StatelessWidget {
 
     // On iPhone Duo's inner display held upright the chrome shares the status
     // bar's row, centred in it, as the route's own bar lays its row out.
-    final statusRow = StatusBarRow.of(context);
     if (statusRow != null) {
       return Positioned(
         top: statusRow.top +
@@ -461,7 +475,7 @@ class GlassNavPinnedHost extends StatelessWidget {
       top: topPad,
       left: inset,
       right: inset,
-      height: GlassNavPinnedMetrics.toolbarHeight,
+      height: barHeight,
       child: GlassIsolationScope(
         isolated: true,
         defaultQuality: GlassQuality.premium,
@@ -524,6 +538,7 @@ class GlassNavPinnedHost extends StatelessWidget {
               _itemsFor(context, state, registration, side)
                   .where((item) => _goesInStrip(item, vertical: false))
                   .toList(),
+              buttonSize: registration.buttonSize,
             ),
         ];
 
@@ -624,6 +639,7 @@ class GlassNavBarGroup {
     required this.items,
     required this.background,
     this.axis = Axis.horizontal,
+    this.buttonSize,
   });
 
   /// The items sharing this group's background, leading to trailing.
@@ -636,6 +652,11 @@ class GlassNavBarGroup {
   /// iPhone Duo's vertical strip.
   final Axis axis;
 
+  /// Optional diameter override for standalone buttons in a horizontal bar.
+  ///
+  /// Defaults to [GlassNavPinnedMetrics.backDiameter] (`44.0`) when null.
+  final double? buttonSize;
+
   /// Whether a glass shell is drawn behind [items].
   bool get glass =>
       background != GlassBarItemBackground.none &&
@@ -644,17 +665,29 @@ class GlassNavBarGroup {
   /// Thickness of the shell across the bar: its height in a horizontal bar,
   /// its width in the vertical strip.
   ///
-  /// A group that shares with nothing is the 44pt circular button iOS 26 draws
-  /// for a lone bar item — at that height the capsule's 22pt radius is clamped
-  /// to exactly half the box, so the rounded rectangle *is* a circle. A shared
-  /// capsule keeps the taller icon-slot height it has always had. In the strip
-  /// every control is [GlassVerticalBarMetrics.controlExtent] wide.
+  /// A group that shares with nothing is the circular button iOS 26 draws
+  /// for a lone bar item — at that height the capsule's [borderRadius] is
+  /// clamped to exactly half the box, so the rounded rectangle *is* a circle.
+  /// A shared capsule keeps the 2pt taller icon-slot height it has always had.
+  /// In the strip every control is [GlassVerticalBarMetrics.controlExtent]
+  /// wide.
   double get crossExtent {
     if (axis == Axis.vertical) return GlassVerticalBarMetrics.controlExtent;
+    final diameter = buttonSize ?? GlassNavPinnedMetrics.backDiameter;
     return background == GlassBarItemBackground.shared
-        ? GlassNavPinnedMetrics.slot
-        : GlassNavPinnedMetrics.backDiameter;
+        ? diameter +
+            (GlassNavPinnedMetrics.slot - GlassNavPinnedMetrics.backDiameter)
+        : diameter;
   }
+
+  /// Corner radius of the group's glass shell before any morph scale.
+  ///
+  /// Half of the effective standalone button diameter so a standalone button
+  /// remains a true circle at any [buttonSize].
+  double get borderRadius =>
+      ((axis == Axis.vertical ? null : buttonSize) ??
+          GlassNavPinnedMetrics.backDiameter) /
+      2.0;
 
   /// Length of an icon slot along the bar.
   ///
@@ -691,6 +724,7 @@ class GlassNavBarGroup {
 List<GlassNavBarGroup> groupGlassNavBarItems(
   List<GlassBarItem> items, {
   Axis axis = Axis.horizontal,
+  double? buttonSize,
 }) {
   final groups = <GlassNavBarGroup>[];
   var run = <GlassBarActionItem>[];
@@ -701,6 +735,7 @@ List<GlassNavBarGroup> groupGlassNavBarItems(
       items: run,
       background: GlassBarItemBackground.shared,
       axis: axis,
+      buttonSize: buttonSize,
     ));
     run = <GlassBarActionItem>[];
   }
@@ -728,6 +763,7 @@ List<GlassNavBarGroup> groupGlassNavBarItems(
       items: [item],
       background: item.background,
       axis: axis,
+      buttonSize: buttonSize,
     ));
   }
   flushRun();
@@ -953,6 +989,7 @@ class _PinnedSide extends StatelessWidget {
     required this.scaleAlignment,
     required this.coverageScale,
     this.axis = Axis.horizontal,
+    this.minCross = 0.0,
   });
 
   final GlassNavPinnedState state;
@@ -976,6 +1013,12 @@ class _PinnedSide extends StatelessWidget {
 
   /// The direction groups run in.
   final Axis axis;
+
+  /// Minimum thickness of the run across its axis at rest.
+  ///
+  /// Centres shells vertically inside a taller toolbar without bounding
+  /// `maxHeight`, so the gel swell is never clamped.
+  final double minCross;
 
   @override
   Widget build(BuildContext context) {
@@ -1154,6 +1197,7 @@ class _PinnedSide extends StatelessWidget {
           ? GlassVerticalBarMetrics.spacing
           : GlassNavPinnedMetrics.groupGap,
       positionT: positionT,
+      minCross: minCross,
       children: children,
     );
 
@@ -1237,6 +1281,7 @@ class _PinnedRun extends MultiChildRenderObjectWidget {
     required this.anchoredAtStart,
     required this.spacing,
     required this.positionT,
+    this.minCross = 0.0,
     required super.children,
   });
 
@@ -1253,12 +1298,16 @@ class _PinnedRun extends MultiChildRenderObjectWidget {
   /// Interpolation from the outgoing run to the incoming one.
   final double positionT;
 
+  /// Minimum thickness across the run at rest.
+  final double minCross;
+
   @override
   RenderObject createRenderObject(BuildContext context) => _RenderPinnedRun(
         axis: axis,
         anchoredAtStart: anchoredAtStart,
         spacing: spacing,
         positionT: positionT,
+        minCross: minCross,
       );
 
   @override
@@ -1267,7 +1316,8 @@ class _PinnedRun extends MultiChildRenderObjectWidget {
       ..axis = axis
       ..anchoredAtStart = anchoredAtStart
       ..spacing = spacing
-      ..positionT = positionT;
+      ..positionT = positionT
+      ..minCross = minCross;
   }
 }
 
@@ -1280,10 +1330,12 @@ class _RenderPinnedRun extends RenderBox
     required bool anchoredAtStart,
     required double spacing,
     required double positionT,
+    double minCross = 0.0,
   })  : _axis = axis,
         _anchoredAtStart = anchoredAtStart,
         _spacing = spacing,
-        _positionT = positionT;
+        _positionT = positionT,
+        _minCross = minCross;
 
   Axis _axis;
   set axis(Axis value) {
@@ -1310,6 +1362,13 @@ class _RenderPinnedRun extends RenderBox
   set positionT(double value) {
     if (_positionT == value) return;
     _positionT = value;
+    markNeedsLayout();
+  }
+
+  double _minCross;
+  set minCross(double value) {
+    if (_minCross == value) return;
+    _minCross = value;
     markNeedsLayout();
   }
 
@@ -1375,7 +1434,7 @@ class _RenderPinnedRun extends RenderBox
 
     // Across the run every shell centres on the thickest one at rest, so a
     // swelling shell and its neighbours share a centre line.
-    var rest = 0.0;
+    var rest = _minCross;
     for (var i = 0; i < datas.length; i++) {
       rest = math.max(rest, datas[i].restCross ?? _crossOf(sizes[i]));
     }
@@ -1383,7 +1442,7 @@ class _RenderPinnedRun extends RenderBox
     final distances = <double>[];
     final offsets = <double>[];
     var main = 0.0;
-    var cross = 0.0;
+    var cross = _minCross;
     for (var i = 0; i < datas.length; i++) {
       final from = distanceOn(i, from: true);
       final to = distanceOn(i, from: false);
@@ -2642,6 +2701,11 @@ class _PinnedGroupState extends State<_PinnedGroup> {
                         toGroup.stretch,
                         clampedT,
                       )!,
+                      borderRadius: lerpDouble(
+                        fromGroup.borderRadius,
+                        toGroup.borderRadius,
+                        clampedT,
+                      )!,
                       morphScale: morphScale,
                       platformViewBackdrop: platformViewBackdrop,
                       // Forward tintColor from a single-item separate group.
@@ -2672,6 +2736,7 @@ class _PinnedGroupState extends State<_PinnedGroup> {
   Widget _buildShell({
     required Widget cluster,
     required double stretch,
+    required double borderRadius,
     required double morphScale,
     required bool platformViewBackdrop,
     Color? tintColor,
@@ -2692,7 +2757,7 @@ class _PinnedGroupState extends State<_PinnedGroup> {
       // The radius scales with the gel so the shape stays a true scaled
       // capsule rather than squaring off as it inflates.
       shape: LiquidRoundedRectangle(
-        borderRadius: GlassNavPinnedMetrics.capsuleRadius * morphScale,
+        borderRadius: borderRadius * morphScale,
       ),
       // Sized by the measured cluster, exactly as GlassButtonGroup.icons
       // sizes to its content.

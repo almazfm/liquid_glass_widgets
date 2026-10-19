@@ -681,6 +681,38 @@ void main() {
     expect(data.actions, hasLength(2));
     expect(find.byType(GlassButtonGroup), findsNWidgets(2));
   });
+
+  testWidgets(
+      'buttonSize sizes both hoisted and in-route chrome identically (#425)',
+      (tester) async {
+    Widget buildScreen() => GlassPinnedBarChrome(
+          buttonSize: 48,
+          actions: [
+            GlassBarItem.icon(
+              icon: const Icon(CupertinoIcons.add),
+              background: GlassBarItemBackground.separate,
+              onTap: () {},
+            ),
+          ],
+          builder: (context, chrome) => Scaffold(
+            appBar: AppBar(
+              automaticallyImplyLeading: false,
+              leading: chrome.leading,
+              actions: chrome.actions,
+            ),
+          ),
+        );
+
+    await tester.pumpWidget(shellApp(buildScreen()));
+    await settle(tester);
+    final pinnedSize = tester.getSize(inHost(find.byType(GlassButton)).first);
+    expect(pinnedSize, const Size(48, 48));
+
+    await tester.pumpWidget(shellApp(buildScreen(), shell: false));
+    await settle(tester);
+    final inRouteSize = tester.getSize(inBar(find.byType(GlassButtonGroup)));
+    expect(inRouteSize, const Size(48, 48));
+  });
 }
 
 /// A screen whose bar is a plain Flutter [AppBar] that still pins.

@@ -173,13 +173,16 @@ class GlassPinnedBarChrome extends StatefulWidget {
     this.backButton = true,
     this.leadingItemsSupplementBackButton = false,
     this.onBack,
+    this.buttonSize,
+    this.toolbarHeight,
     this.buttonSettings,
     this.horizontalInset,
     this.platformViewBackdrop = false,
     this.largeTitleController,
     this.stripRowTop,
     this.enabled = true,
-  });
+  })  : assert(buttonSize == null || buttonSize > 0),
+        assert(toolbarHeight == null || toolbarHeight >= 0);
 
   /// Builds the bar from the chrome resolved for this frame.
   final GlassPinnedBarChromeBuilder builder;
@@ -217,6 +220,23 @@ class GlassPinnedBarChrome extends StatefulWidget {
   /// Set this for router-specific semantics such as go_router's
   /// `context.pop()`.
   final VoidCallback? onBack;
+
+  /// Diameter of standalone bar buttons (the automatic back button and
+  /// non-shared items), in logical pixels.
+  ///
+  /// Defaults to [GlassNavPinnedMetrics.backDiameter] (`44.0`) when null.
+  /// Shared multi-item capsules scale proportionally (`buttonSize + 2.0`),
+  /// and custom items ([GlassBarItem.custom]) are constrained to this height
+  /// in a horizontal bar.
+  final double? buttonSize;
+
+  /// Height of the toolbar row in which the pinned chrome sits, in logical
+  /// pixels.
+  ///
+  /// Defaults to [GlassNavPinnedMetrics.toolbarHeight] (`44.0`) when null,
+  /// expanding to at least [buttonSize] when [buttonSize] exceeds the toolbar
+  /// height.
+  final double? toolbarHeight;
 
   /// Glass settings applied to this route's pinned chrome.
   ///
@@ -391,6 +411,8 @@ class _GlassPinnedBarChromeState extends State<GlassPinnedBarChrome> {
         leading: widget.leading,
         showsBackButton: _showsBack,
         onBack: widget.onBack,
+        buttonSize: widget.buttonSize,
+        toolbarHeight: widget.toolbarHeight,
         buttonSettings: widget.buttonSettings,
         horizontalInset: widget.horizontalInset,
         platformViewBackdrop: widget.platformViewBackdrop,
@@ -459,15 +481,17 @@ class _GlassPinnedBarChromeState extends State<GlassPinnedBarChrome> {
   /// The back button, or the space it occupied once the shell has it.
   Widget _buildBackButton(
     BuildContext context, {
-    double backSize = GlassNavPinnedMetrics.backDiameter,
+    double? backSize,
   }) {
+    final size =
+        backSize ?? widget.buttonSize ?? GlassNavPinnedMetrics.backDiameter;
     if (_handedOver) {
-      return SizedBox(width: backSize, height: backSize);
+      return SizedBox(width: size, height: size);
     }
     return GlassButton(
       icon: const Icon(CupertinoIcons.back),
-      width: backSize,
-      height: backSize,
+      width: size,
+      height: size,
       iconSize: GlassNavPinnedMetrics.iconSize,
       platformViewBackdrop: widget.platformViewBackdrop,
       label: Localizations.of<CupertinoLocalizations>(
@@ -563,7 +587,7 @@ class _GlassPinnedBarChromeState extends State<GlassPinnedBarChrome> {
             platformViewBackdrop: widget.platformViewBackdrop,
             settings: groupSettings,
             direction: group.axis,
-            borderRadius: GlassNavPinnedMetrics.capsuleRadius,
+            borderRadius: group.borderRadius,
             iconSize: GlassNavPinnedMetrics.iconSize,
             itemPadding: EdgeInsets.zero,
             items: [
@@ -619,7 +643,8 @@ class _GlassPinnedBarChromeState extends State<GlassPinnedBarChrome> {
   }
 
   /// One item as the pinned cluster lays it out: icons in a slot matching
-  /// the group's extent, custom content at its own size.
+  /// the group's extent, custom content at its own main-axis size and
+  /// constrained to the group's cross extent.
   Widget _slot(
     GlassNavBarGroup group,
     GlassBarActionItem item,
@@ -627,12 +652,12 @@ class _GlassPinnedBarChromeState extends State<GlassPinnedBarChrome> {
   ) {
     return SizedBox(
       width: item is GlassBarCustomItem
-          ? null
+          ? (group.axis == Axis.vertical ? group.crossExtent : null)
           : (group.axis == Axis.horizontal
               ? group.slotExtent
               : group.crossExtent),
       height: item is GlassBarCustomItem
-          ? null
+          ? (group.axis == Axis.horizontal ? group.crossExtent : null)
           : (group.axis == Axis.vertical
               ? group.slotExtent
               : group.crossExtent),
@@ -648,7 +673,10 @@ class _GlassPinnedBarChromeState extends State<GlassPinnedBarChrome> {
   /// The leading slot: the back button where the route shows one, followed by
   /// the declared leading groups.
   Widget? _buildLeading(BuildContext context) {
-    final groups = groupGlassNavBarItems(widget.leading);
+    final groups = groupGlassNavBarItems(
+      widget.leading,
+      buttonSize: widget.buttonSize,
+    );
     final slot = <Widget>[
       if (_showsBack) _buildBackButton(context),
       for (final group in groups) _buildGroup(group),
@@ -664,7 +692,10 @@ class _GlassPinnedBarChromeState extends State<GlassPinnedBarChrome> {
 
   /// The trailing slot: one widget per shell the actions resolve to.
   List<Widget> _buildActions() {
-    final groups = groupGlassNavBarItems(widget.actions);
+    final groups = groupGlassNavBarItems(
+      widget.actions,
+      buttonSize: widget.buttonSize,
+    );
     return [for (final group in groups) _buildGroup(group)];
   }
 
@@ -682,6 +713,7 @@ class _GlassPinnedBarChromeState extends State<GlassPinnedBarChrome> {
               item is! GlassBarActionItem || item.goesVertical == vertical)
           .toList(),
       axis: vertical ? Axis.vertical : Axis.horizontal,
+      buttonSize: vertical ? null : widget.buttonSize,
     );
   }
 
