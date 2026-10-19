@@ -3,6 +3,7 @@
 
 ## Bug Fixes
 - **A pinned bar asserted when the screen resized under another route:** A pinned bar's in-route strip is an `OverlayPortal.overlayChildLayoutBuilder` child, which Flutter lays out every frame even while its route is offstage, against the overlay's size from before the resize (flutter/flutter#192030). Rotating or unfolding iPhone Duo under a full-screen route asserted `size == theater.size`. `GlassPinnedBarChrome` now takes the strip out of the overlay while its route is offstage.
+- **A modal sheet shown with `isDismissible: false` closed on an outside tap:** `GlassModalSheetScaffold` catches taps outside the sheet itself, above the route's barrier, and always dismissed on them. It now takes `barrierDismissible`, and `GlassModalSheet.show` passes `isDismissible` to it.
 
 ## Features
 
