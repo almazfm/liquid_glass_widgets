@@ -18,6 +18,8 @@
 
 ## Bug Fixes
 
+- **`GlassBarItem.custom` without `onTap` wrapped its child in an unlabelled button (fixes #432):** Omitting `onTap` defaulted to a no-op callback that still wrapped the slot in a button, so a custom child that was already a button exposed two nested buttons to screen readers and keyboard navigation. Omitting `onTap` on `GlassBarItem.custom` or `GlassButtonGroupItem` now leaves the slot passive — no outer button semantics, focus stop, tap recognizer, or strip overflow entry — and a `label` on a passive slot names it as a single node.
+
 - **`GlassMenu` mouse hover pill (PR #430):** The `selectionColor` highlight pill now follows a resting mouse pointer across menu rows and clears when the pointer exits, giving visible hover feedback on light glass where the white item wash was invisible.
 
   Thanks to [@Ahmadre](https://github.com/Ahmadre) for the fix (#430).

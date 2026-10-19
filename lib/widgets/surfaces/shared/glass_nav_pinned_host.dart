@@ -863,6 +863,7 @@ List<GlassNavBarGroup> fitGlassNavStripGroups(
       entries.addAll(item.menuItems);
       continue;
     }
+    if (!item.hasTap) continue;
     entries.add(GlassMenuItem(
       title: item.label ?? '',
       icon: switch (item) {
@@ -875,6 +876,7 @@ List<GlassNavBarGroup> fitGlassNavStripGroups(
           item is GlassBarSheetItem ? () => item.onPresent(null) : item.onTap,
     ));
   }
+  if (entries.isEmpty) return kept;
   return [
     ...kept,
     GlassNavBarGroup(
@@ -2880,6 +2882,17 @@ class _ClusterItem extends StatelessWidget {
 
     if (!item.enabled) {
       content = Opacity(opacity: 0.5, child: content);
+    }
+
+    if (!item.hasTap && onMenuTap == null) {
+      if (item.label != null && item.label!.isNotEmpty) {
+        return Semantics(
+          container: true,
+          label: item.label,
+          child: ExcludeSemantics(child: content),
+        );
+      }
+      return Semantics(explicitChildNodes: true, child: content);
     }
 
     // A sheet item morphs the whole shell, so the group presents it.
