@@ -867,41 +867,48 @@ void main() {
       (tester) async {
         final handle = tester.ensureSemantics();
         for (final useShell in [false, true]) {
-          await tester.pumpWidget(shellApp(
-            shell: useShell,
-            const Scaffold(
-              appBar: GlassAppBar.pinned(
-                title: Text('Title'),
-                actions: [
-                  GlassBarItem.custom(
-                    label: '3 unread messages',
-                    enabled: false,
-                    child: Text('3'),
-                  ),
-                ],
+          for (final background in [
+            GlassBarItemBackground.shared,
+            GlassBarItemBackground.none,
+          ]) {
+            await tester.pumpWidget(shellApp(
+              shell: useShell,
+              Scaffold(
+                appBar: GlassAppBar.pinned(
+                  title: const Text('Title'),
+                  actions: [
+                    GlassBarItem.custom(
+                      label: '3 unread messages',
+                      enabled: false,
+                      background: background,
+                      child: const Text('3'),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ));
-          await settle(tester);
+            ));
+            await settle(tester);
 
-          final finder = useShell
-              ? inHost(find.bySemanticsLabel('3 unread messages'))
-              : find.bySemanticsLabel('3 unread messages');
-          final node = tester.getSemantics(finder);
-          expect(node.label, '3 unread messages');
-          expect(
-            node,
-            isNot(isSemantics(isButton: true, hasTapAction: true)),
-          );
+            final finder = useShell
+                ? inHost(find.bySemanticsLabel('3 unread messages'))
+                : find.bySemanticsLabel('3 unread messages');
+            final node = tester.getSemantics(finder);
+            expect(node.label, '3 unread messages');
+            expect(
+              node,
+              isNot(isSemantics(isButton: true, hasTapAction: true)),
+            );
 
-          final textFinder = useShell ? inHost(find.text('3')) : find.text('3');
-          final opacityFinder = find.ancestor(
-            of: textFinder,
-            matching: find.byWidgetPredicate(
-              (w) => w is Opacity && w.opacity == 0.5,
-            ),
-          );
-          expect(opacityFinder, findsOneWidget);
+            final textFinder =
+                useShell ? inHost(find.text('3')) : find.text('3');
+            final opacityFinder = find.ancestor(
+              of: textFinder,
+              matching: find.byWidgetPredicate(
+                (w) => w is Opacity && w.opacity == 0.5,
+              ),
+            );
+            expect(opacityFinder, findsOneWidget);
+          }
         }
         handle.dispose();
       },
