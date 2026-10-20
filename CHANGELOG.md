@@ -1,8 +1,8 @@
-# Unreleased
+# 1.14.0
 
 ## Features
 
-- **Configurable button size for `GlassAppBar.pinned` (fixes #425):** `GlassAppBar.pinned` and `GlassPinnedBarChrome` now accept an optional `buttonSize` (`double?`, default `44.0`), sizing standalone bar buttons (the automatic back button and `separate` / `own` / `none` items) to `buttonSize`, scaling shared multi-item capsules proportionally (`buttonSize + 2.0`), and forwarding `toolbarHeight` to the pinned host so buttons are vertically centered and custom items (e.g. a 48×48 `GlassButton` with `GlassBarItemBackground.own`) are never squeezed to 44pt. `buttonSize` is ignored in iPhone Duo's vertical strip, which keeps its native metrics; in the upright status-row layout the chrome keeps its 44pt row and is not re-centred for a larger `buttonSize`.
+- **Configurable button size for `GlassAppBar.pinned` (PR #433, fixes #425):** `GlassAppBar.pinned` and `GlassPinnedBarChrome` now accept an optional `buttonSize` (`double?`, default `44.0`), sizing standalone bar buttons (the automatic back button and `separate` / `own` / `none` items) to `buttonSize`, scaling shared multi-item capsules proportionally (`buttonSize + 2.0`), and forwarding `toolbarHeight` to the pinned host so buttons are vertically centered and custom items (e.g. a 48×48 `GlassButton` with `GlassBarItemBackground.own`) are never squeezed to 44pt. `buttonSize` is ignored in iPhone Duo's vertical strip, which keeps its native metrics; in the upright status-row layout the chrome keeps its 44pt row and is not re-centred for a larger `buttonSize`.
 
   **Behaviour note:** a `GlassAppBar.pinned` bar's in-route buttons are no longer capped at the toolbar height, so a shared multi-item capsule drawn in-route now measures 46pt like the pinned copy, where it was previously clamped to 44pt (a 2pt jump at hand-over). Custom items inside a capsule are likewise held to the capsule's height in-route, as they already were when pinned.
 
@@ -18,7 +18,9 @@
 
 ## Bug Fixes
 
-- **`GlassBarItem.custom` without `onTap` wrapped its child in an unlabelled button (fixes #432):** Omitting `onTap` defaulted to a no-op callback that still wrapped the slot in a button, so a custom child that was already a button exposed two nested buttons to screen readers and keyboard navigation. Omitting `onTap` on `GlassBarItem.custom` or `GlassButtonGroupItem` now leaves the slot passive — no outer button semantics, focus stop, tap recognizer, or strip overflow entry — and a `label` on a passive slot names it as a single node.
+- **`GlassBarItem.custom` without `onTap` wrapped its child in an unlabelled button (PR #434, fixes #432):** Omitting `onTap` defaulted to a no-op callback that still wrapped the slot in a button, so a custom child that was already a button exposed two nested buttons to screen readers and keyboard navigation. Omitting `onTap` on `GlassBarItem.custom` or `GlassButtonGroupItem` now leaves the slot passive — no outer button semantics, focus stop, tap recognizer, or strip overflow entry — and a `label` on a passive slot names it as a single node.
+
+  Thanks to [@veloce](https://github.com/veloce) for the bug report (#432).
 
 - **`GlassMenu` mouse hover pill (PR #430):** The `selectionColor` highlight pill now follows a resting mouse pointer across menu rows and clears when the pointer exits, giving visible hover feedback on light glass where the white item wash was invisible.
 
