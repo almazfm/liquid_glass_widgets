@@ -472,53 +472,13 @@ abstract class LiquidGlassRenderObject extends RenderProxyBox {
       );
     } else {
       if (_geometryImage case final geometryImage?) {
-        // Map the texture to exactly the bounds it was originally built for
-        // (_geometryLocalBounds) rather than the newly expanding current frame
-        // bounds (_paintBounds).
-        //
-        // Using _paintBounds causes severe multi-button jitter during animations:
-        // as one button scales, _paintBounds expands/shifts to contain it. Since
-        // the asynchronous texture lags 1 frame behind, rendering the old texture
-        // using the new origin visually shifted entire group of buttons on the
-        // screen until the next texture arrived.
-        //
-        // Locking the shader mapping to the precise bounds the texture was built
-        // with ensures stable pixel positioning for the life of the texture.
-        final activeBounds = MatrixUtils.transformRect(
-          matteTransform,
-          _geometryLocalBounds,
-        ).snapToPixels(devicePixelRatio);
-
         // Scale physical thickness to maintain identical logical rim width across DPRs.
         // The baseline visual thickness was tuned on a 3x Retina display.
         final scale = devicePixelRatio / 3.0;
 
         final dpr = devicePixelRatio;
 
-        // On Impeller, any ancestor BackdropFilter (Flutter's or our own
-        // own-layer glass) renders its subtree into an offscreen pass scoped to
-        // that ancestor's clip. FlutterFragCoord() inside our shader is then
-        // relative to that pass, not the screen, and the backdrop texture IS
-        // that pass. Express uSize and uGeometryOffset against that pass rect.
-        // When there is no such ancestor, passLogical is null and passPhysical
-        // equals the full screen — uniforms reduce exactly to their previous
-        // values (zero regression for top-level surfaces).
-        final passLogical = enclosingBackdropPassRect();
-        // Impeller allocates offscreen-pass textures in whole physical pixels;
-        // round out so our size matches the actual texture dimensions.
-        final passPhysical = passLogical == null
-            ? Offset.zero & (desiredMatteSize * dpr)
-            : Rect.fromLTRB(
-                (passLogical.left * dpr).floorToDouble(),
-                (passLogical.top * dpr).floorToDouble(),
-                (passLogical.right * dpr).ceilToDouble(),
-                (passLogical.bottom * dpr).ceilToDouble(),
-              );
-
-        // The capture path draws without a live backdrop, so no frost.
-        frostRowsPath = settings.effectiveFrost > 0 && _captureImage == null
-            ? _frostRows(passPhysical, dpr)
-            : null;
+        writeScreenUniforms();
         // The frost's opacity, eased in over its first 2 pt so a frost that
         // animates up from 0 doesn't start as a sharp, opaque cloud, and kept
         // above zero so uFrost.x doubles as the frost's on switch.
@@ -532,19 +492,6 @@ abstract class LiquidGlassRenderObject extends RenderProxyBox {
         final ghostSigma = settings.effectiveBlur * dpr;
 
         renderShader!
-          // Slot 0-1: uSize — physical-pixel size of the enclosing compositor
-          // pass (root surface when no backdrop ancestor exists).
-          ..setFloatUniforms(initialIndex: 0, (value) {
-            value.setSize(passPhysical.size);
-          })
-          // Slots 2-5: uGeometryOffset + uGeometrySize, pass-relative.
-          // Subtracting passPhysical.topLeft converts screen-space activeBounds
-          // into coordinates relative to the pass texture's origin (0,0).
-          ..setFloatUniforms(initialIndex: 2, (value) {
-            value
-              ..setOffset(activeBounds.topLeft * dpr - passPhysical.topLeft)
-              ..setSize(activeBounds.size * dpr);
-          })
           ..setFloatUniforms(initialIndex: 6, (value) {
             value
               ..setColor(settings.effectiveGlassColor)
@@ -599,16 +546,6 @@ abstract class LiquidGlassRenderObject extends RenderProxyBox {
                 settings.bodyMode == GlassBodyMode.clear ? 1.0 : 0.0,
               );
           })
-          // Slots 34-35: uTouchPosition (physical px); Slot 36: uTouchIntensity.
-          // Multiply by DPR here so the shader receives physical-pixel coords
-          // matching FlutterFragCoord() — GlassGlowLayerState delivers logical px.
-          // Subtract passPhysical.topLeft for the same reason as uGeometryOffset:
-          // touch position must be relative to the enclosing pass, not the screen.
-          ..setFloatUniforms(initialIndex: 34, (value) {
-            value
-              ..setOffset(_touchPosition * dpr - passPhysical.topLeft)
-              ..setFloat(_touchIntensity.clamp(0.0, 1.0));
-          })
           // Slots 37-39: uRimConfig (rimShade, rimLight, rimShadeEnds);
           // slot 40: uLensModel; slot 45: uBodyShade.
           ..setFloatUniforms(initialIndex: 37, (value) {
@@ -641,6 +578,81 @@ abstract class LiquidGlassRenderObject extends RenderProxyBox {
     }
 
     super.paint(context, offset);
+  }
+
+  /// Writes the uniforms that depend on where the glass is on screen (uSize,
+  /// uGeometryOffset, uGeometrySize, uTouchPosition) and the [frostRowsPath]
+  /// for that position, from the current [matteTransform]. Paint calls it,
+  /// and so does a layer moved without a repaint, while it is composited.
+  @protected
+  void writeScreenUniforms() {
+    final dpr = devicePixelRatio;
+    // Map the texture to exactly the bounds it was originally built for
+    // (_geometryLocalBounds) rather than the newly expanding current frame
+    // bounds (_paintBounds).
+    //
+    // Using _paintBounds causes severe multi-button jitter during animations:
+    // as one button scales, _paintBounds expands/shifts to contain it. Since
+    // the asynchronous texture lags 1 frame behind, rendering the old texture
+    // using the new origin visually shifted entire group of buttons on the
+    // screen until the next texture arrived.
+    //
+    // Locking the shader mapping to the precise bounds the texture was built
+    // with ensures stable pixel positioning for the life of the texture.
+    final activeBounds = MatrixUtils.transformRect(
+      matteTransform,
+      _geometryLocalBounds,
+    ).snapToPixels(dpr);
+
+    // On Impeller, any ancestor BackdropFilter (Flutter's or our own
+    // own-layer glass) renders its subtree into an offscreen pass scoped to
+    // that ancestor's clip. FlutterFragCoord() inside our shader is then
+    // relative to that pass, not the screen, and the backdrop texture IS
+    // that pass. Express uSize and uGeometryOffset against that pass rect.
+    // When there is no such ancestor, passLogical is null and passPhysical
+    // equals the full screen — uniforms reduce exactly to their previous
+    // values (zero regression for top-level surfaces).
+    final passLogical = enclosingBackdropPassRect();
+    // Impeller allocates offscreen-pass textures in whole physical pixels;
+    // round out so our size matches the actual texture dimensions.
+    final passPhysical = passLogical == null
+        ? Offset.zero & (desiredMatteSize * dpr)
+        : Rect.fromLTRB(
+            (passLogical.left * dpr).floorToDouble(),
+            (passLogical.top * dpr).floorToDouble(),
+            (passLogical.right * dpr).ceilToDouble(),
+            (passLogical.bottom * dpr).ceilToDouble(),
+          );
+
+    // The capture path draws without a live backdrop, so no frost.
+    frostRowsPath = settings.effectiveFrost > 0 && _captureImage == null
+        ? _frostRows(passPhysical, dpr)
+        : null;
+
+    renderShader!
+      // Slot 0-1: uSize — physical-pixel size of the enclosing compositor
+      // pass (root surface when no backdrop ancestor exists).
+      ..setFloatUniforms(initialIndex: 0, (value) {
+        value.setSize(passPhysical.size);
+      })
+      // Slots 2-5: uGeometryOffset + uGeometrySize, pass-relative.
+      // Subtracting passPhysical.topLeft converts screen-space activeBounds
+      // into coordinates relative to the pass texture's origin (0,0).
+      ..setFloatUniforms(initialIndex: 2, (value) {
+        value
+          ..setOffset(activeBounds.topLeft * dpr - passPhysical.topLeft)
+          ..setSize(activeBounds.size * dpr);
+      })
+      // Slots 34-35: uTouchPosition (physical px); Slot 36: uTouchIntensity.
+      // Multiply by DPR here so the shader receives physical-pixel coords
+      // matching FlutterFragCoord() — GlassGlowLayerState delivers logical px.
+      // Subtract passPhysical.topLeft for the same reason as uGeometryOffset:
+      // touch position must be relative to the enclosing pass, not the screen.
+      ..setFloatUniforms(initialIndex: 34, (value) {
+        value
+          ..setOffset(_touchPosition * dpr - passPhysical.topLeft)
+          ..setFloat(_touchIntensity.clamp(0.0, 1.0));
+      });
   }
 
   void _clearGeometryImage() {
