@@ -1,3 +1,9 @@
+# Unreleased
+
+## Bug Fixes
+
+- **Glass moved by layout was drawn at its previous position for one frame (fixes #418):** When an ancestor only translated premium glass, as a window resize or a scroll can, the moved frame drew the glass at its old position, cut off on one side and, under a frost, with a dark copy of its shape left behind. The glass now follows the move in the same frame.
+
 # 1.14.0
 
 ## Features
