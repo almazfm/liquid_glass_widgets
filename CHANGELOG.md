@@ -2,6 +2,8 @@
 
 ## Bug Fixes
 
+- **Tab-bar icon masking alignment:** Align `JellyClipper` with `AnimatedGlassIndicator` by applying the 4px inset to the whole track before dividing it into tabs, including overdrag positions. This prevents unselected icon fragments from being refracted beside the selected icon during press/drag interactions. Glass optics and gesture defaults are unchanged.
+- **Glass moved by layout was drawn at its previous position for one frame (fixes #418):** When an ancestor only translated premium glass, as a window resize or a scroll can, the moved frame drew the glass at its old position, cut off on one side and, under a frost, with a dark copy of its shape left behind. The glass now follows the move in the same frame.
 - **`GlassBarItem.menu` menus ran off screen and could not scroll:** The menus of `GlassBarItem.menu` (in `GlassAppBar.pinned`, pinned or in-route, and `GlassNavigationShell`) and of `GlassButtonGroupItem.menu` did not set `autoAdjustToScreen`, so neither the menu nor its `GlassMenuItem.submenu` cards had a height limit: a long menu or submenu grew past the screen edge and its last rows could not be reached. They now set `autoAdjustToScreen: true`, as the tab bar menus already do, so they stop at the screen edge and scroll.
 
 # 1.14.0
