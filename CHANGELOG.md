@@ -3,6 +3,7 @@
 ## Bug Fixes
 
 - **Tab-bar icon masking alignment:** Align `JellyClipper` with `AnimatedGlassIndicator` by applying the 4px inset to the whole track before dividing it into tabs, including overdrag positions. This prevents unselected icon fragments from being refracted beside the selected icon during press/drag interactions. Glass optics and gesture defaults are unchanged.
+- **Glass moved by layout was drawn at its previous position for one frame (fixes #418):** When an ancestor only translated premium glass, as a window resize or a scroll can, the moved frame drew the glass at its old position, cut off on one side and, under a frost, with a dark copy of its shape left behind. The glass now follows the move in the same frame.
 
 # 1.14.0
 
