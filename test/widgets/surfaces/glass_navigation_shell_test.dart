@@ -1364,6 +1364,72 @@ void main() {
 
       expect(find.text('Copy'), findsOneWidget);
     });
+
+    for (final pinned in [true, false]) {
+      final where = pinned ? 'pinned' : 'in-route';
+
+      Future<void> openMenu(WidgetTester tester, List<Widget> items) async {
+        if (!pinned) GlassNavigationShellState.debugPinningSupported = false;
+        final screen = _Screen(title: 'Root', actions: [
+          GlassBarItem.menu(
+            icon: const Icon(CupertinoIcons.ellipsis),
+            menuItems: items,
+          ),
+        ]);
+        await tester
+            .pumpWidget(pinned ? shellApp(screen) : CupertinoApp(home: screen));
+        await settle(tester);
+        await tester.tap(pinned
+            ? find.descendant(
+                of: find.byType(GlassNavPinnedHost),
+                matching: find.byIcon(CupertinoIcons.ellipsis),
+              )
+            : find.byIcon(CupertinoIcons.ellipsis));
+        await tester.pumpAndSettle();
+      }
+
+      /// Scrolls from [first] toward the end and taps [last], which must be on
+      /// screen.
+      Future<void> scrollAndTap(
+          WidgetTester tester, String first, String last) async {
+        await tester.drag(find.text(first), const Offset(0, -3000));
+        await tester.pumpAndSettle();
+        final screen = Offset.zero &
+            tester.view.physicalSize / tester.view.devicePixelRatio;
+        expect(screen.contains(tester.getCenter(find.text(last))), isTrue);
+        await tester.tap(find.text(last));
+        await tester.pumpAndSettle();
+      }
+
+      testWidgets('$where: a long menu stops at the screen edge and scrolls',
+          (tester) async {
+        var chosen = false;
+        await openMenu(tester, [
+          for (var i = 1; i <= 30; i++)
+            GlassMenuItem(title: 'Row $i', onTap: () => chosen = i == 30),
+        ]);
+
+        await scrollAndTap(tester, 'Row 1', 'Row 30');
+        expect(chosen, isTrue);
+      });
+
+      testWidgets('$where: a long submenu stops at the screen edge and scrolls',
+          (tester) async {
+        var chosen = false;
+        await openMenu(tester, [
+          GlassMenuItem(title: 'Copy', onTap: () {}),
+          GlassMenuItem(title: 'Move to…', onTap: () {}, submenu: [
+            for (var i = 1; i <= 30; i++)
+              GlassMenuItem(title: 'Folder $i', onTap: () => chosen = i == 30),
+          ]),
+        ]);
+        await tester.tap(find.text('Move to…'));
+        await tester.pumpAndSettle();
+
+        await scrollAndTap(tester, 'Folder 1', 'Folder 30');
+        expect(chosen, isTrue);
+      });
+    }
   });
 
   group('page-based navigators', () {
