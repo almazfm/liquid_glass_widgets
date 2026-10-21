@@ -116,15 +116,23 @@ class JellyClipper extends CustomClipper<Path> {
     final trackWidth = size.width - 2 * indicatorInset;
     final tabWidth = trackWidth / itemCount;
     final availableWidth = trackWidth - tabWidth;
-    final left = indicatorInset + (alignment.x + 1) / 2 * availableWidth;
+    final rawLeft = indicatorInset + (alignment.x + 1) / 2 * availableWidth;
 
-    // FractionallySizedBox also extrapolates alignment during overdrag. Keep
-    // that motion here so the optical surface and both icon masks stay aligned.
-    final paddedRect = Rect.fromLTWH(
+    // Keep the edge tab covered during rubber-band overdrag (#328). Only
+    // extend the outward edge; normal positions still match the optical lens.
+    final left = rawLeft.clamp(
+      double.negativeInfinity,
+      indicatorInset + availableWidth,
+    );
+    final right = (rawLeft + tabWidth).clamp(
+      indicatorInset + tabWidth,
+      double.infinity,
+    );
+    final paddedRect = Rect.fromLTRB(
       left,
       indicatorInset,
-      tabWidth,
-      size.height - 2 * indicatorInset,
+      right,
+      size.height - indicatorInset,
     );
 
     // Apply expansion based on thickness (drag state)
