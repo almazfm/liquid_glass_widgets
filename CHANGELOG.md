@@ -1,3 +1,9 @@
+# Unreleased
+
+## Bug Fixes
+
+- **Tab-bar icon masking alignment:** Align `JellyClipper` with `AnimatedGlassIndicator` by applying the 4px inset to the whole track before dividing it into tabs, including overdrag positions. This prevents unselected icon fragments from being refracted beside the selected icon during press/drag interactions. Glass optics and gesture defaults are unchanged.
+
 # 1.14.0
 
 ## Features
