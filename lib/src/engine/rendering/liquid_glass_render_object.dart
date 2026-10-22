@@ -363,6 +363,34 @@ abstract class LiquidGlassRenderObject extends RenderProxyBox {
     return true;
   }
 
+  /// Whether every shape is, right now, where [_geometryImage] was
+  /// rasterized for it, relative to this render object.
+  ///
+  /// Unlike [_sameTransformsAsMatte], which compares what the last paint saw,
+  /// this reads the live transforms, so it can be asked between paints. False
+  /// whenever that can't be told.
+  bool get matteMatchesShapeTransforms {
+    final shapes = link.shapes;
+    if (_geometryImage == null ||
+        _geometryImageTransforms.length != shapes.length) {
+      return false;
+    }
+    try {
+      for (var i = 0; i < shapes.length; i++) {
+        if (!shapes[i].attached ||
+            !MatrixUtils.matrixEquals(
+              shapes[i].getTransformTo(this),
+              _geometryImageTransforms[i],
+            )) {
+          return false;
+        }
+      }
+    } catch (_) {
+      return false;
+    }
+    return true;
+  }
+
   // MARK: Painting
 
   @override
@@ -428,10 +456,8 @@ abstract class LiquidGlassRenderObject extends RenderProxyBox {
     final rebuildGeometry = needsGeometryUpdate ||
         _geometryImage == null ||
         link._dirty ||
-        (link._transformDirty && !_sameTransformsAsMatte());
-    link._transformDirty = false;
+        !_sameTransformsAsMatte();
     if (rebuildGeometry) {
-      link.updateAllGeometries();
       link._dirty = false;
       needsGeometryUpdate = false;
 
@@ -1058,16 +1084,6 @@ class GeometryRenderLink {
 
   bool _dirty = false;
 
-  /// Set when a geometry's transform changed; the layer rebuilds its matte
-  /// only if the transform relative to it changed too.
-  bool _transformDirty = false;
-
-  void updateAllGeometries() {
-    for (final renderObject in _shapeGeometries) {
-      renderObject.maybeRebuildGeometry();
-    }
-  }
-
   void registerGeometry(
     RenderLiquidGlassGeometry renderObject,
   ) {
@@ -1083,13 +1099,6 @@ class GeometryRenderLink {
   /// layer should integrate the updated result on the next paint.
   void notifyGeometryChanged(RenderLiquidGlassGeometry renderObject) {
     _dirty = true;
-  }
-
-  /// Signals that a geometry object moved on screen. The render layer
-  /// rebuilds its matte on the next paint only if the geometry moved
-  /// relative to the layer.
-  void notifyTransformChanged(RenderLiquidGlassGeometry renderObject) {
-    _transformDirty = true;
   }
 
   void unregisterGeometry(RenderLiquidGlassGeometry renderObject) {
