@@ -1,22 +1,24 @@
-# Unreleased
+# 1.14.1
 
 ## Bug Fixes
 
-- **`GlassBarItem.menu`, `GlassButtonGroupItem.menu`, and `GlassPullDownButton` menus ran off screen and could not scroll (PR #440):** The menus of `GlassBarItem.menu` (in `GlassAppBar.pinned`, pinned or in-route, and `GlassNavigationShell`), `GlassButtonGroupItem.menu`, and `GlassPullDownButton` did not set `autoAdjustToScreen`, so neither the menu nor its `GlassMenuItem.submenu` cards had a height limit: a long menu or submenu grew past the screen edge and its last rows could not be reached. They now set `autoAdjustToScreen: true`, as the tab bar menus already do, so they stop at the screen edge and scroll.
+- **Standalone premium glass buttons and pinned navigation bar buttons had clipped, flattened edges:** Standalone `useOwnLayer` glass surfaces without `rimShade` or `frost` now reserve the full outer anti-aliasing border so circular buttons are not clipped at their top, bottom, left, and right poles, and shared navigation bar items now use a half-height (`23pt`) corner radius so single-item shared buttons are true circles.
+
+- **`GlassBarItem.menu`, `GlassButtonGroupItem.menu`, and `GlassPullDownButton` menus ran off screen and could not scroll (PR #440):** These menus and their `GlassMenuItem.submenu` cards now enable `autoAdjustToScreen: true` by default so long menus stop at the screen edge and scroll.
 
   Thanks to [@veloce](https://github.com/veloce) for the fix (#440).
 
-- **Tab-bar icon masking alignment (PR #439):** Align `JellyClipper` with `AnimatedGlassIndicator` by applying the 4px inset to the whole track before dividing it into tabs, including overdrag positions. This prevents unselected icon fragments from being refracted beside the selected icon during press/drag interactions. Glass optics and gesture defaults are unchanged.
+- **Tab-bar icon masking alignment (PR #439):** `JellyClipper` now matches `AnimatedGlassIndicator` by applying the 4px track inset before dividing into tabs, preventing unselected icon fragments from refracting beside the active icon during press and drag interactions.
 
   Thanks to [@xuwucv](https://github.com/xuwucv) for the report and fix (#439).
 
-- **Glass moved by layout was drawn at its previous position for one frame (PR #438, fixes #418):** When an ancestor only translated premium glass, as a window resize or a scroll can, the moved frame drew the glass at its old position, cut off on one side and, under a frost, with a dark copy of its shape left behind. The glass now follows the move in the same frame.
+- **Glass moved by layout was drawn at its previous position for one frame (PR #438, fixes #418):** Premium glass translated by layout (such as during a window resize or scroll) now updates its composite position in the same frame instead of lagging by one frame.
 
   Thanks to [@erikjara](https://github.com/erikjara) for the report (#418) and the fix (#438).
 
 ## Performance
 
-- **A layout-only move of premium glass no longer costs a second frame:** After the same-frame fix above, the blend group and its shapes still reported the move and scheduled a repaint, which re-rasterized the geometry matte with `toImageSync` on the next frame. The matte is in the layer's own space, so a group and shapes that only travelled along with the layer are now left alone (and the frost's pixel-row clip layer stays retained whenever the row phase is unchanged). When a group or shape moves *within* its layer, the matte now rebuilds in the same frame rather than one frame later, and the enclosing layer is woken even when a `RepaintBoundary` sits between it and the moving glass. Covered by `test/renderer/layout_move_no_repaint_test.dart` (run under `--enable-impeller`).
+- **Layout-only moves of premium glass no longer rebuild the geometry matte:** Translating an entire glass layer no longer schedules a follow-up repaint or re-rasterizes its local-space geometry matte, while shapes or groups that move *within* a layer now rebuild the matte in the same frame.
 
 # 1.14.0
 

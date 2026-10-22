@@ -1779,15 +1779,20 @@ void main() {
 
       await tester.pumpWidget(shellApp(buildScreen()));
       await settle(tester);
-      // 2 shared slots of (48 + 2) = 50pt each -> 100 x 50.
-      final pinnedSize = tester.getSize(inHost(find.byType(GlassButton)).first);
+      // 2 shared slots of (48 + 2) = 50pt each -> 100 x 50 with 25pt radius.
+      final pinnedShell = inHost(find.byType(GlassButton)).first;
+      final pinnedSize = tester.getSize(pinnedShell);
       expect(pinnedSize, const Size(100, 50));
+      final pinnedShape = tester.widget<GlassButton>(pinnedShell).shape
+          as LiquidRoundedRectangle;
+      expect(pinnedShape.borderRadius, 25.0);
 
       await tester.pumpWidget(shellApp(buildScreen(), enabled: false));
       await settle(tester);
-      final inRouteSize =
-          tester.getSize(inBar(find.byType(GlassButtonGroup)).first);
+      final inRouteGroup = inBar(find.byType(GlassButtonGroup)).first;
+      final inRouteSize = tester.getSize(inRouteGroup);
       expect(inRouteSize, pinnedSize);
+      expect(tester.widget<GlassButtonGroup>(inRouteGroup).borderRadius, 25.0);
     });
 
     testWidgets(
@@ -1853,7 +1858,8 @@ void main() {
         (tester) async {
       await tester.pumpWidget(shellApp(sizedScreen('Root', actions: 2)));
       await settle(tester);
-      final hoisted = tester.getSize(inHost(find.byType(GlassButton)).first);
+      final hoistedFinder = inHost(find.byType(GlassButton)).first;
+      final hoisted = tester.getSize(hoistedFinder);
       expect(
         hoisted,
         const Size(
@@ -1861,14 +1867,19 @@ void main() {
           GlassNavPinnedMetrics.slot,
         ),
       );
+      final hoistedShape = tester.widget<GlassButton>(hoistedFinder).shape
+          as LiquidRoundedRectangle;
+      expect(hoistedShape.borderRadius, GlassNavPinnedMetrics.slot / 2.0);
 
       await tester.pumpWidget(
         shellApp(sizedScreen('Root', actions: 2), enabled: false),
       );
       await settle(tester);
+      final inRouteFinder = inBar(find.byType(GlassButtonGroup)).first;
+      expect(tester.getSize(inRouteFinder), hoisted);
       expect(
-        tester.getSize(inBar(find.byType(GlassButtonGroup)).first),
-        hoisted,
+        tester.widget<GlassButtonGroup>(inRouteFinder).borderRadius,
+        GlassNavPinnedMetrics.slot / 2.0,
       );
     });
 

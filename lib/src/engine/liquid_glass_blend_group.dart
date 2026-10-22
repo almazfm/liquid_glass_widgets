@@ -447,16 +447,14 @@ class RenderLiquidGlassBlendGroup extends RenderLiquidGlassGeometry
     }
 
     return (
-      // With a rim outline or a frost the geometry pass draws the glass a
-      // physical pixel larger than the shape (uNativeEdge in
-      // liquid_glass_geometry_blended.frag): room for that plus a
-      // transparent border, since the matte's edge texels are what the
-      // shadow blurs and what the render pass clamps to outside the matte.
+      // The geometry pass draws the outer half of the SDF anti-aliasing ramp
+      // (and, under uNativeEdge, a 1px silhouette expansion for the rim
+      // outline / frost) outside shapeBounds: reserve 3 physical pixels for
+      // that band plus a transparent border texel, since the matte's edge
+      // texels are what the shadow blurs and what the render pass clamps to
+      // outside the matte.
       (layerBounds ?? Rect.zero).inflate(
-        blend * .25 +
-            (settings.rimShade > 0 || settings.frost > 0
-                ? 3 / devicePixelRatio
-                : 0),
+        blend * .25 + 3 / devicePixelRatio,
       ),
       shapes,
       anyShapeChangedInLayer,

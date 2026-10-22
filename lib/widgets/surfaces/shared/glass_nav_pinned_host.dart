@@ -682,12 +682,10 @@ class GlassNavBarGroup {
 
   /// Corner radius of the group's glass shell before any morph scale.
   ///
-  /// Half of the effective standalone button diameter so a standalone button
-  /// remains a true circle at any [buttonSize].
-  double get borderRadius =>
-      ((axis == Axis.vertical ? null : buttonSize) ??
-          GlassNavPinnedMetrics.backDiameter) /
-      2.0;
+  /// Half of [crossExtent] so a single-item group (whether `separate` at `44pt`
+  /// or `shared` at `46pt`) is always a true circle and a multi-item capsule
+  /// always has semicircular stadium ends.
+  double get borderRadius => crossExtent / 2.0;
 
   /// Length of an icon slot along the bar.
   ///
