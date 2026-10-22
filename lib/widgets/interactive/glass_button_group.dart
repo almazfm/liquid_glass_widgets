@@ -359,6 +359,7 @@ class GlassButtonGroup extends StatelessWidget {
           menuAlignment: menuItem.menuAlignment,
           menuWidth: menuItem.menuWidth,
           menuHeight: menuItem.menuHeight,
+          autoAdjustToScreen: true,
           items: menuItem.menuItems!,
           triggerBuilder: (context, toggleMenu) =>
               buildPill(menuToggle: toggleMenu),
