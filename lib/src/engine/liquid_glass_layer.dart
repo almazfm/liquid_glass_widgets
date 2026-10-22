@@ -19,6 +19,8 @@ import '../renderer/glass_backdrop_group_boundary.dart';
 import '../renderer/glass_frost_budget.dart';
 import '../renderer/glass_materialize_scope.dart';
 import '../renderer/liquid_glass_push_back_scope.dart';
+import '../renderer/liquid_glass_renderer.dart'
+    show debugPaintLiquidGlassGeometry;
 import '../renderer/liquid_glass_self_scale_scope.dart';
 import 'glass_glow.dart';
 import 'internal/transform_tracking_repaint_boundary_mixin.dart';
@@ -536,6 +538,7 @@ class RenderLiquidGlassLayer extends LiquidGlassRenderObject
   void detach() {
     _group?.leave(this);
     _group = null;
+    _uniformsTransform = null;
     super.detach();
   }
 
@@ -712,6 +715,7 @@ class RenderLiquidGlassLayer extends LiquidGlassRenderObject
     final shaderLayer = _shaderHandle.layer;
     final clipLayer = _clipRectLayerHandle.layer;
     if (!attached ||
+        debugPaintLiquidGlassGeometry ||
         shaderLayer == null ||
         clipLayer == null ||
         geometryImage == null ||
@@ -722,20 +726,20 @@ class RenderLiquidGlassLayer extends LiquidGlassRenderObject
     // Painted this frame where it is now: the layers are already current.
     if (transform == _uniformsTransform) return true;
     _uniformsTransform = null;
-    final hadFrost = frostRowsPath != null;
+    final prevFrostRows = frostRowsPath;
     _updateScaleState(transform, super.captureOriginInScreenSpace);
     writeScreenUniforms();
     // uFrost.x switches on frostRowsPath; that needs the full paint.
-    if ((frostRowsPath != null) != hadFrost) return false;
+    if ((frostRowsPath != null) != (prevFrostRows != null)) return false;
     // Re-add the clips around changed layers instead of their retained copy.
     if (!_Recomposite.mark(clipLayer)) return false;
     if (frostRowsPath case final rows?) {
       final rowsLayer = _frostRowsLayerHandle.layer;
-      if (rowsLayer == null ||
-          !_Recomposite.mark(_frostClipLayerHandle.layer)) {
-        return false;
+      if (rowsLayer == null) return false;
+      if (!identical(rows, prevFrostRows)) {
+        if (!_Recomposite.mark(_frostClipLayerHandle.layer)) return false;
+        rowsLayer.clipPath = rows.shift(_paintOffset);
       }
-      rowsLayer.clipPath = rows.shift(_paintOffset);
     }
     // The filter holds the uniforms it was created with.
     shaderLayer.filter = ImageFilter.shader(renderShader!);
@@ -1167,6 +1171,7 @@ class RenderLiquidGlassLayer extends LiquidGlassRenderObject
     _clipPathLayerHandle.layer = null;
     _frostClipLayerHandle.layer = null;
     _frostRowsLayerHandle.layer = null;
+    _uniformsTransform = null;
     backdropPassClipRectLocal = null;
     super.dispose();
   }
